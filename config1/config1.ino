@@ -5,13 +5,20 @@
 
 LSM6DSO myIMU; //default construction
 HardwareSerial& odrive_serial = Serial1;
-unsigned long baudrate = 115200; // Must match what you configure on the ODrive (see docs for details)
+const unsigned long baudrate = 115200; // Must match what you configure on the ODrive (see docs for details)
 ODriveUART odrive(odrive_serial);
 float angle; //angle of the bike
+float prevAngle; //previous angle of the bike
+unsigned long prevTime=millis(); //previous time
+
+//weight gyroscope and accelerometer 
+const float kGA=.9;
 
 //area of error, from the IMU for PID
 float area;
-
+const float kP=0.1; //proportional gain
+const float kI=0.1; //integral gain
+const float kD=0.1; //derivative gain
 void setup(){
     //configure odrive
     odrive_serial.begin(baudrate);
@@ -50,20 +57,25 @@ void setup(){
     //initalize angle depends on congiuration of the actual IMU could be subject to change depending on how we attach the pdrive
     //for now this is a simple way to determine the angle of the bike
     //read the sensor to get the angle
-    angle = atan2(myIMU.readFloatAccelY(), myIMU.readFloatAccelX()) * 180 / PI; //convert to degrees
-    unsigned long prevTime=millis(); //set the previous time to the current time
+    angle = atan2(myIMU.readFloatAccelX(), myIMU.readFloatAccelY()) * 180 / PI; //convert to degrees
+    prevAngle=float(angle);
+    prevTime=millis(); //set the previous time to the current time
 }
 
 //for now we are using floating points but note thhat later we will change this to integers for faster speeds
 void loop(){
-    unsigned long dt= millis()-prevTime; //calculate the time difference
-    prevTime=millis(); //set the previous time to the current time
-    float velocity;
-    //get angle from the IMU
-    a1=atan2(myIMU.readFloatAccelY(), myIMU.readFloatAccelX()) * 180 / PI;
-    a2=myIMU.readFloatGyroZ()*dt
-     
+    unsigned long dt=millis()-prevTime;
+    prevTime=millis();
+    float a1=atan2(myIMU.readFloatAccelX(), myIMU.readFloatAccelY()) * 180 / PI;
+    float a2=angle-myIMU.readFloatGyroZ()*dt/1000;
+    angle=a1*(1-kGA)+a2*kGA; //calculate the angle of the bike
 
+    //PID implementation
+    area+=angle*dt;
+    float velocity=kI*area+kP*angle+kD*(angle-prevAngle)/dt; //calculate the velocity of the bike
+    prevAngle=angle; //set the previous angle to the current angle
     odrive.setVelocity(velocity); //set velocity
+    Serial.print(angle); Serial.print(',');
+    Serial.println(velocity);
 
 }

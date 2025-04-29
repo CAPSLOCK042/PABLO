@@ -32,9 +32,7 @@ void loop()
 {
   unsigned long dt=millis()-prevTime;
   prevTime=millis();
-  float a1=atan2(myIMU.readFloatAccelX(), myIMU.readFloatAccelY()) * 180 / PI;
-  float a2=angle-myIMU.readFloatGyroZ()*dt/1000;
-  angle=a1*.1+a2*.9;
+  
 
   float ax = myIMU.readFloatAccelX();
   float ay = myIMU.readFloatAccelY();
@@ -44,11 +42,25 @@ void loop()
   float gy = myIMU.readFloatGyroY();
   float gz = myIMU.readFloatGyroZ();
 
+  float a1=atan2(ax, sqrt(sq(ay)+sq(az))) * 180 / PI;
+  float a2=(gy*.67+.775*gz)*dt/10;
+  angle=a1*.1+(angle-a2)*.9;
   // Print in CSV format: ax, ay, az, gx, gy, gz
+
+  Serial.print(ax);Serial.print(",");
+  Serial.print(ay);Serial.print(",");
+  Serial.print(az);Serial.print(",");
+  Serial.print(gx);Serial.print(",");
+  Serial.print(gy);Serial.print(",");
+  Serial.print(gz);Serial.print("|||");
 
   Serial.print(a1);Serial.print(",");
   Serial.print(a2);Serial.print(",");
-  Serial.print(angle);
+  Serial.print(angle-a2);Serial.print(",");
+  Serial.print(angle);Serial.print(",");
+
+
   Serial.println();
+
 
 }

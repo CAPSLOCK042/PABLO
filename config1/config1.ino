@@ -16,9 +16,9 @@ const float kGA=.9;
 
 //area of error, from the IMU for PID
 float area;
-const float kP=0.1; //proportional gain
-const float kI=0.1; //integral gain
-const float kD=0.1; //derivative gain
+const float kP=.01; //proportional gain
+const float kI=.0000001; //integral gain
+const float kD=.01; //derivative gain
 void setup(){
     //configure odrive
     odrive_serial.begin(baudrate);
@@ -72,10 +72,10 @@ void loop(){
 
     //PID implementation
     area+=angle*dt;
-    float velocity=kI*area+kP*angle+kD*(angle-prevAngle)/dt; //calculate the velocity of the bike
+    float torque=kI*area+kP*angle+kD*(angle-prevAngle)/dt; //calculate the velocity of the bike
     prevAngle=angle; //set the previous angle to the current angle
-    odrive.setVelocity(velocity); //set velocity
+    odrive.setTorque(torque); //set torque
     Serial.print(angle); Serial.print(',');
-    Serial.println(velocity);
+    Serial.println(torque);
 
 }

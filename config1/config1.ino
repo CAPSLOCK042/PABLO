@@ -16,13 +16,16 @@ const float kGA=.9;
 
 //area of error, from the IMU for PID
 float area;
-const float kP=.01; //proportional gain
-const float kI=.0000001; //integral gain
-const float kD=.01; //derivative gain
+float kP=.01; //proportional gain
+float kI=0; //integral gain
+float kD=.01; //derivative gain
+String inputString = "";     // stores the input
+bool stringComplete = false; // whether the string is complete
 void setup(){
     //configure odrive
     odrive_serial.begin(baudrate);
     Serial.begin(115200); 
+    inputString.reserve(50);
     Serial.println("Waiting for ODrive...");
     while (odrive.getState() == AXIS_STATE_UNDEFINED) {
         delay(10);
@@ -60,22 +63,69 @@ void setup(){
     angle = atan2(myIMU.readFloatAccelX(), myIMU.readFloatAccelY()) * 180 / PI; //convert to degrees
     prevAngle=float(angle);
     prevTime=millis(); //set the previous time to the current time
+    delay(1000);
 }
-
+void serialEvent() {
+    while (Serial.available()) {
+        char inChar = (char)Serial.read();
+        if (inChar == '\n') {
+            stringComplete = true;
+        } else {
+            inputString += inChar;
+        }
+    }
+}
 //for now we are using floating points but note thhat later we will change this to integers for faster speeds
 void loop(){
     unsigned long dt=millis()-prevTime;
     prevTime=millis();
-    float a1=atan2(myIMU.readFloatAccelX(), myIMU.readFloatAccelY()) * 180 / PI;
-    float a2=angle-myIMU.readFloatGyroZ()*dt/1000;
-    angle=a1*(1-kGA)+a2*kGA; //calculate the angle of the bike
+
+
+    float ax = myIMU.readFloatAccelX();
+    float ay = myIMU.readFloatAccelY();
+    float az = myIMU.readFloatAccelZ();
+
+    float gx = myIMU.readFloatGyroX();
+    float gy = myIMU.readFloatGyroY();
+    float gz = myIMU.readFloatGyroZ();
+
+    float a1=atan2(ax, sqrt(sq(ay)+sq(az))) * 180 / PI;
+    float a2=-(gy*.67-.775*gz)*dt/1000;
+    angle=a1*.1+(angle+a2)*.9;
+
 
     //PID implementation
     area+=angle*dt;
     float torque=kI*area+kP*angle+kD*(angle-prevAngle)/dt; //calculate the velocity of the bike
+
     prevAngle=angle; //set the previous angle to the current angle
-    odrive.setTorque(torque); //set torque
-    Serial.print(angle); Serial.print(',');
-    Serial.println(torque);
+    float vel = odrive.getVelocity();
+
+
+    odrive.setVelocity(torque*dt-vel,4.1); //set torque
+    Serial.print(angle); Serial.print(",");
+    Serial.print(torque*dt-vel);Serial.print(",Kp=");
+    Serial.print(kP);Serial.print(",Ki=");
+    Serial.print(kI);Serial.print(",Kd=");
+    Serial.println(kD);
+    // Handle Serial input for changing Kp, Ki, Kd
+    
+    if (stringComplete) {
+      inputString.toLowerCase();
+        if (inputString.startsWith("kp=")) {
+            kP = inputString.substring(3).toFloat();
+            Serial.print("Updated Kp: "); Serial.println(kP);
+        } else if (inputString.startsWith("ki=")) {
+            kI = inputString.substring(3).toFloat();
+            Serial.print("Updated Ki: "); Serial.println(kI);
+        } else if (inputString.startsWith("kd=")) {
+            kD = inputString.substring(3).toFloat();
+            Serial.print("Updated Kd: "); Serial.println(kD);
+        } else {
+            Serial.println("Unknown command. Use Kp=, Ki=, or Kd=");
+        }
+        inputString = "";
+        stringComplete = false;
+    }
 
 }

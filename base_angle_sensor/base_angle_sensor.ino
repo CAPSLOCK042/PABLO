@@ -44,7 +44,7 @@ void loop()
 
   float a1=atan2(ax, sqrt(sq(ay)+sq(az))) * 180 / PI;
   float a2=-(gy*.67-.775*gz)*dt/1000;
-  angle=a1*.1+(angle+a2)*.9;
+  angle=a1*.1+(angle+a2)*.9 ;
   // Print in CSV format: ax, ay, az, gx, gy, gz
 
 

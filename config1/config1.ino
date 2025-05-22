@@ -10,7 +10,7 @@ ODriveUART odrive(odrive_serial);
 float angle; //angle of the bike
 float prevAngle; //previous angle of the bike
 unsigned long prevTime=millis(); //previous time
-
+float ang=0;
 //weight gyroscope and accelerometer 
 const float kGA=.9;
 
@@ -91,7 +91,7 @@ void loop(){
 
     float a1=atan2(ax, sqrt(sq(ay)+sq(az))) * 180 / PI;
     float a2=-(gy*.67-.775*gz)*dt/1000;
-    angle=a1*.1+(angle+a2)*.9;
+    angle=a1*.1+(angle+a2)*.9+ang;
 
 
     //PID implementation
@@ -102,7 +102,7 @@ void loop(){
     float vel = odrive.getVelocity();
 
 
-    odrive.setVelocity(torque*dt-vel,4.1); //set torque
+    odrive.setVelocity(torque*dt-vel,4.7); //set torque
     Serial.print(angle); Serial.print(",");
     Serial.print(torque*dt-vel);Serial.print(",Kp=");
     Serial.print(kP);Serial.print(",Ki=");
@@ -120,6 +120,9 @@ void loop(){
             Serial.print("Updated Ki: "); Serial.println(kI);
         } else if (inputString.startsWith("kd=")) {
             kD = inputString.substring(3).toFloat();
+            Serial.print("Updated Kd: "); Serial.println(kD);
+        } else if (inputString.startsWith("and=")) {
+            ang = inputString.substring(3).toFloat();
             Serial.print("Updated Kd: "); Serial.println(kD);
         } else {
             Serial.println("Unknown command. Use Kp=, Ki=, or Kd=");

@@ -32,7 +32,7 @@
 // pin 19: RX - connect to ODrive TX
 // pin 18: TX - connect to ODrive RX
 // See https://www.arduino.cc/reference/en/language/functions/communication/serial/ for other options
-HardwareSerial& odrive_serial = Serial1;
+HardwareSerial& odrive_serial = Serial2;
 unsigned long baudrate = 115200; // Must match what you configure on the ODrive (see docs for details)
 
 
@@ -68,7 +68,7 @@ void setup() {
 }
 
 void loop() {
-  float SINE_PERIOD = 2.0f; // Period of the position command sine wave in seconds
+  float SINE_PERIOD = 20.0f; // Period of the position command sine wave in seconds
 
   float t = 0.001 * millis();
   

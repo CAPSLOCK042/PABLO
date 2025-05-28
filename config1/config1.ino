@@ -4,9 +4,11 @@
 
 
 LSM6DSO myIMU; //default construction
-HardwareSerial& odrive_serial = Serial1;
+HardwareSerial& odrive_serial1 = Serial1;
+HardwareSerial& odrive_serial2 = Serial2;
 const unsigned long baudrate = 115200; // Must match what you configure on the ODrive (see docs for details)
-ODriveUART odrive(odrive_serial);
+ODriveUART odrive1(odrive_serial1);
+ODriveUART odrive2(odrive_serial2);
 float angle; //angle of the bike
 float prevAngle; //previous angle of the bike
 unsigned long prevTime=millis(); //previous time
@@ -23,22 +25,29 @@ String inputString = "";     // stores the input
 bool stringComplete = false; // whether the string is complete
 void setup(){
     //configure odrive
-    odrive_serial.begin(baudrate);
+    odrive_serial1.begin(baudrate);
+    odrive_serial2.begin(baudrate);
+
     Serial.begin(115200); 
     inputString.reserve(50);
     Serial.println("Waiting for ODrive...");
-    while (odrive.getState() == AXIS_STATE_UNDEFINED) {
+    while (odrive1.getState() == AXIS_STATE_UNDEFINED && odrive2.getState() == AXIS_STATE_UNDEFINED) {
         delay(10);
     }
 
     Serial.println("found ODrive");
     Serial.print("DC voltage: ");
-    Serial.println(odrive.getParameterAsFloat("vbus_voltage"));
+    Serial.println(odrive1.getParameterAsFloat("vbus_voltage"));
+    Serial.println("found ODrive");
+    Serial.print("DC voltage: ");
+    Serial.println(odrive2.getParameterAsFloat("vbus_voltage"));
     
     Serial.println("Enabling closed loop control...");
-    while (odrive.getState() != AXIS_STATE_CLOSED_LOOP_CONTROL) {
-        odrive.clearErrors();
-        odrive.setState(AXIS_STATE_CLOSED_LOOP_CONTROL);
+    while (odrive1.getState() != AXIS_STATE_CLOSED_LOOP_CONTROL && odrive2.getState() != AXIS_STATE_CLOSED_LOOP_CONTROL) {
+        odrive1.clearErrors();
+        odrive1.setState(AXIS_STATE_CLOSED_LOOP_CONTROL);
+        odrive2.clearErrors();
+        odrive2.setState(AXIS_STATE_CLOSED_LOOP_CONTROL);
         delay(10);
     }
     Serial.println("ODrive running!");
@@ -64,6 +73,8 @@ void setup(){
     prevAngle=float(angle);
     prevTime=millis(); //set the previous time to the current time
     delay(1000);
+    odrive1.setVelocity(-5); //set torque
+    odrive2.setVelocity(5);
 }
 void serialEvent() {
     while (Serial.available()) {
@@ -99,12 +110,14 @@ void loop(){
     float torque=kI*area+kP*angle+kD*(angle-prevAngle)/dt; //calculate the velocity of the bike
 
     prevAngle=angle; //set the previous angle to the current angle
-    float vel = odrive.getVelocity();
+    float vel1 = odrive1.getVelocity();
+    float vel2 = odrive2.getVelocity();
 
 
-    odrive.setVelocity(torque*dt-vel,4.7); //set torque
+    odrive1.setVelocity(torque*dt-vel1,4.7); //set torque
+    odrive2.setVelocity((torque*dt-vel2)/1.1,4.7); //set torque
     Serial.print(angle); Serial.print(",");
-    Serial.print(torque*dt-vel);Serial.print(",Kp=");
+    Serial.print(torque*dt-vel1);Serial.print(",");Serial.print((torque*dt-vel2)/2);Serial.print(",Kp=");
     Serial.print(kP);Serial.print(",Ki=");
     Serial.print(kI);Serial.print(",Kd=");
     Serial.println(kD);
